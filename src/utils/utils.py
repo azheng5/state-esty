@@ -1,0 +1,1 @@
+#add some useful stuff to automate plotting and getting data

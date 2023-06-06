@@ -5,19 +5,44 @@ import matplotlib.pyplot as plt
 #built in
 import math
 import time
+import csv
 
 #local
 
 '''
 '''
 
-def read_sensor(type):
+data = np.array([
+    [339.2, 0.02, -0.01, 0.015],
+    [571.6, -0.03, 0.025, -0.018],
+    [814.8, 0.015, -0.02, 0.022],
+    [1018.3, -0.017, 0.018, -0.025],
+    [1252.9, 0.019, -0.015, 0.03],
+    [1456.4, -0.022, 0.02, -0.015],
+    [1689.7, 0.025, -0.022, 0.018],
+    [1874.1, -0.018, 0.015, -0.02],
+    [2091.5, 0.022, -0.017, 0.015],
+    [2286.8, -0.015, 0.019, -0.022],
+    [2483.2, 0.03, -0.022, 0.017],
+    [2762.7, -0.025, 0.025, -0.019],
+    [2959.4, 0.018, -0.018, 0.022],
+    [3148.8, -0.022, 0.022, -0.015],
+    [3422.3, 0.025, -0.015, 0.018],
+    [3618.9, -0.019, 0.019, -0.017],
+    [3859.4, 0.015, -0.025, 0.019],
+    [4075.1, -0.03, 0.018, -0.022],
+    [4247.6, 0.022, -0.022, 0.015],
+    [4493.2, -0.015, 0.015, -0.018]
+])
+
+def read_sensor(type,iter):
     '''
     Reads simulated sensor data from the local database
     '''
 
-    measurement = np.array([[100,0.1,-0.1,0.1]]).T
-
+    # measurement = np.array([[x,x,x,x]]).T
+    measurement = np.array([data[iter-1,:]])
+    measurement = measurement.T
 
     if type == "state":
         return measurement
@@ -64,6 +89,7 @@ def main():
 
     ########### LKF params ############
     TIME_STEP = 0.01
+    NUM_ITERS = data.shape[0]
     state_initial = np.array([[0,0,0,0,0,0,0,0,0]]).T
     #control_input_initial = np.array([[0,0,0,0,0,0]]).T
     covariance_initial = np.array([[50,0,0,0,0,0,0,0,0],
@@ -86,38 +112,44 @@ def main():
                                  [0,0,0,0,0,0,0,0,1]])
     control_matrix = 0
     process_noise = np.array([[10,0,0,0,0,0,0,0,0],
-                                     [0,10,0,0,0,0,0,0,0],
-                                     [0,0,50,0,0,0,0,0,0],
-                                     [0,0,0,10,0,0,0,0,0],
-                                     [0,0,0,0,10,0,0,0,0],
-                                     [0,0,0,0,0,10,0,0,0],
-                                     [0,0,0,0,0,0,10,0,0],
-                                     [0,0,0,0,0,0,0,10,0],
-                                     [0,0,0,0,0,0,0,0,10]])
+                              [0,10,0,0,0,0,0,0,0],
+                              [0,0,50,0,0,0,0,0,0],
+                              [0,0,0,10,0,0,0,0,0],
+                              [0,0,0,0,10,0,0,0,0],
+                              [0,0,0,0,0,10,0,0,0],
+                              [0,0,0,0,0,0,10,0,0],
+                              [0,0,0,0,0,0,0,10,0],
+                              [0,0,0,0,0,0,0,0,10]])
     observation = np.array([[1,0,0,0,0,0,0,0,0],
                             [0,0,0,0,1,0,0,0,0],
                             [0,0,0,0,0,0,1,0,0],
                             [0,0,0,0,0,0,0,0,1]])
-    measurement_covariance = np.array([[1,0,0,0],
+    measurement_covariance = np.array([[50,0,0,0],
                                        [0,1,0,0],
                                        [0,0,1,0],
                                        [0,0,0,1]])
+    
+    ########## PLOTTING STUFF #########
+    measurement_history = np.zeros((NUM_ITERS,4)) #TODO make this not hardcoded
+    estimate_history = np.zeros((NUM_ITERS,state_initial.shape[0]))
 
+    ############# INITIALIZE ALGO ##############
     print("----------- Initialization (iteration 0) ------------")
     iter = 0
     state_future = predict_state(state_current=state_initial,state_transition=state_transition)
     covariance_future = predict_covariance(covariance_initial,state_transition,process_noise)
-    time.sleep(0.1)
+    time.sleep(TIME_STEP)
     iter = iter + 1
     state_old = state_future
     covariance_old = covariance_future
 
-    for i in range(5):
+    ###### ENTER LOOP #######
+    for x in range(NUM_ITERS):
 
         print(f"--------- Iteration {iter} ----------",)
 
         # Get raw sensor data
-        measurement = read_sensor(type="state")
+        measurement = read_sensor("state",iter)
         #control_input = read_sensor(type="control input")
 
         # Fuse sensor to form measurements compatible with state vector
@@ -135,24 +167,41 @@ def main():
         # Predict the future covariance using the current covariance estimate
         covariance_future = predict_covariance(covariance_current,state_transition,process_noise)
 
-        
+        # Add to hisory for plotting
+        measurement_history[x,:] = measurement.T
+        estimate_history[x,:] = state_current.T
+
         time.sleep(TIME_STEP)
         iter = iter + 1
-        state_old = state_future
+        state_old = state_future # not really the "old state", its the "previously predicted state"
         covariance_old = covariance_future
 
-    # x = np.arange(0, numIters + 1)
-    # plt.plot(x,J_hist, label='0.8')
+        
+    # despite the fact that im not measuring some of these states, it would be interesting plot those hidden state over time
 
-    # plt.style.use('seaborn-whitegrid')
-    # plt.xlabel('Iterations')
-    # plt.ylabel('Error')
-    # plt.title('Speed of convergence')
-    # plt.xlim(0, numIters + 1)
-    # plt.grid(True)
-    # plt.tight_layout()
-    # plt.legend()
-    # plt.show()
+    plt.plot(np.arange(0,NUM_ITERS), measurement_history[:,0], label='measured z')
+    #plt.plot(np.arange(0,NUM_ITERS), measurement_history[:,1], label='measured phi dot')
+    # plt.plot(np.arange(0,NUM_ITERS), measurement_history[:,2], label='measured tht dot')
+    # plt.plot(np.arange(0,NUM_ITERS), measurement_history[:,3], label='measured psi dot')
+
+    plt.plot(np.arange(0,NUM_ITERS), estimate_history[:,0], label='z')
+    plt.plot(np.arange(0,NUM_ITERS), estimate_history[:,1], label='z dot')
+    plt.plot(np.arange(0,NUM_ITERS), estimate_history[:,2], label='z dot dot')
+    #plt.plot(np.arange(0,NUM_ITERS), estimate_history[:,3], label='phi')
+    #plt.plot(np.arange(0,NUM_ITERS), estimate_history[:,3], label='phi dot')
+    # plt.plot(np.arange(0,NUM_ITERS), estimate_history[:,3], label='tht')
+    # plt.plot(np.arange(0,NUM_ITERS), estimate_history[:,3], label='tht dot')
+    # plt.plot(np.arange(0,NUM_ITERS), estimate_history[:,3], label='psi')
+    # plt.plot(np.arange(0,NUM_ITERS), estimate_history[:,3], label='psi dot')
+
+    plt.style.use('seaborn-whitegrid')
+    plt.xlabel('Iterations')
+    plt.ylabel('Error')
+    plt.title('Speed of convergence')
+    plt.grid(True)
+    plt.tight_layout()
+    plt.legend()
+    plt.show()
         
 
 if __name__ == "__main__":
