@@ -35,7 +35,7 @@ data = np.array([
     [4493.2, -0.015, 0.015, -0.018]
 ])
 
-def read_sensor(type,iter):
+def read_fake_sensor(type,iter):
     '''
     Reads simulated sensor data from the local database
     '''
@@ -149,8 +149,8 @@ def main():
         print(f"--------- Iteration {iter} ----------",)
 
         # Get raw sensor data
-        measurement = read_sensor("state",iter)
-        #control_input = read_sensor(type="control input")
+        measurement = read_fake_sensor("state",iter)
+        #control_input = read_fake_sensor(type="control input")
 
         # Fuse sensor to form measurements compatible with state vector
         #fused_measurement = fuse_sensor(raw_measurement)
